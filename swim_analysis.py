@@ -3,7 +3,8 @@ import sys
 import cv2
 import torch
 import numpy as np
-from torchvision.transforms import v2
+from torchvision.transforms import v2 as T
+import kornia as K
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from ultralytics import YOLO
 import supervision as sv
@@ -108,12 +109,49 @@ class SwimAnalyzer:
         Args:
             frame (np.ndarray): frame to transform.
         """
-        # Transformation pipeline
-        transforms = v2.Compose([
-            v2.ToTensor(),
-            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        def remove_blue_from_image(image: torch.Tensor) -> torch.Tensor:
+            """Removes blue from an image by manipulating the hue channel in HSV space."""
+
+            # Convert to HSV
+            hsv_image = K.color.rgb_to_hsv(image.float() / 255.0)  # Assuming image is in range [0, 255]
+
+            # Manipulate the hue channel (example: shift blue hues)
+            hue_channel = hsv_image[:, 0, :, :] # Extract the hue channel
+            blue_mask = (hue_channel > 0.5) & (hue_channel < 0.9) # Define a mask for blue hues
+            hue_channel[blue_mask] = 0  # Shift blue hues to a different value
+            hsv_image[:, 0, :, :] = hue_channel  # Update hue channel in HSV image
+
+            # Convert back to RGB
+            rgb_image = K.color.hsv_to_rgb(hsv_image)
+
+            return rgb_image * 255.0  # Scale back to [0, 255]
+        
+        # Advanced Pre-processing pipeline for each frame
+        advanced_frame_transforms = T.Compose([
+            T.Resize((389, 389)),
+            T.CenterCrop(389),
+            
+            # Bilateral (edge‐preserving) smoothing
+            T.Lambda(lambda x: K.filters.bilateral_blur(x.unsqueeze(0), kernel_size=(3,3), sigma_color=0.1, sigma_space=(1.0, 1.0)).squeeze(0)),
+
+            # Sobel edge‐detection
+            # T.Lambda(lambda x: K.filters.spatial_gradient(x.unsqueeze(0), mode='sobel', order=1).squeeze(0)),
+
+            # Adjust contrast
+            T.Lambda(lambda x: K.enhance.adjust_contrast(x.unsqueeze(0), 1.5).squeeze(0)),
+
+            # Image sharpening
+            T.Lambda(lambda x: K.enhance.sharpness(x.unsqueeze(0), 2.0).squeeze(0)),
+
+            # Remove blue from image
+            T.Lambda(lambda x: remove_blue_from_image(x.unsqueeze(0)).squeeze(0)),
+
+            T.ToDtype(torch.float32, scale=True),
+
+            T.Normalize(mean=[0.485,0.456,0.406],
+                        std=[0.229,0.224,0.225]),
         ])
-        return transforms(frame)
+        return advanced_frame_transforms(frame)
 
     def process_frame(self, frame, idx):
         """ PROCESS FRAME FUNCTION

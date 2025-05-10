@@ -3,8 +3,12 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
 import joblib
+import warnings
+
+# Filter out the specific warning
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.metrics._classification')
 
 def prepare_data(csv_path):
     """Prepare the data for training by grouping keypoints by frame."""
@@ -57,18 +61,23 @@ def train_classifier(X, y):
     
     # Evaluate the classifier
     y_pred = clf.predict(X_test_scaled)
+    
+    # Calculate and print test accuracy
+    test_accuracy = accuracy_score(y_test, y_pred)
+    print(f"\nTest Accuracy: {test_accuracy:.4f}")
+    
     print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
     
     # Save the model and scaler
     joblib.dump(clf, 'models/stroke_classifier.joblib')
     joblib.dump(scaler, 'models/stroke_scaler.joblib')
     
-    return clf, scaler
+    return clf, scaler, test_accuracy
 
 def predict_stroke(frame_keypoints, clf, scaler):
     """Predict stroke type for a single frame's keypoints."""
-    # Ensure the input is in the correct shape
+    # Ensure the input is in the correct shape (34x1)
     if len(frame_keypoints.shape) == 1:
         frame_keypoints = frame_keypoints.reshape(1, -1)
     
@@ -88,9 +97,16 @@ def main():
     X, y = prepare_data(KEYPOINTS_CSV_FILE)
     print(X)
     print(y)
+    print("Shape of X:", X.shape)  # Should be (n_samples, 34)
+    print("Number of unique strokes:", len(np.unique(y)))
+    print("Unique strokes:", np.unique(y))
+    
+    if len(X) < 10:
+        print("\nWarning: Very small dataset detected. Consider collecting more data.")
+        print("The model might not perform well with such limited data.")
     
     # Train the classifier
-    clf, scaler = train_classifier(X, y)
+    clf, scaler, test_accuracy = train_classifier(X, y)
     
     # Example of how to use the classifier for a single frame
     print("\nExample prediction:")

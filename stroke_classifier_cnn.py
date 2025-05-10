@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
 import joblib
 import warnings
 
@@ -43,6 +43,7 @@ class StrokeCNN(nn.Module):
         super(StrokeCNN, self).__init__()
         # Input shape: (batch_size, 17, 2)
         
+        # TODO: Remove conv layers
         # First conv layer: 1D conv along the keypoints dimension
         self.conv1 = nn.Sequential(
             nn.Conv1d(2, 32, kernel_size=3, padding=1),
@@ -185,6 +186,10 @@ def train_cnn(X, y, num_classes, device='cuda' if torch.cuda.is_available() else
     all_preds = label_encoder.inverse_transform(all_preds)
     all_labels = label_encoder.inverse_transform(all_labels)
     
+    # Calculate and print test accuracy
+    test_accuracy = accuracy_score(all_labels, all_preds)
+    print(f"\nTest Accuracy: {test_accuracy:.4f}")
+    
     print("\nClassification Report:")
     print(classification_report(all_labels, all_preds, zero_division=0))
     
@@ -193,7 +198,7 @@ def train_cnn(X, y, num_classes, device='cuda' if torch.cuda.is_available() else
     joblib.dump(scaler, 'models/stroke_cnn_scaler.joblib')
     joblib.dump(label_encoder, 'models/stroke_cnn_label_encoder.joblib')
     
-    return model, scaler, label_encoder
+    return model, scaler, label_encoder, test_accuracy
 
 def predict_stroke_cnn(frame_keypoints, model, scaler, label_encoder, device='cuda' if torch.cuda.is_available() else 'cpu'):
     """Predict stroke type for a single frame's keypoints using CNN."""
@@ -225,8 +230,6 @@ def main():
 
     # Prepare the data
     X, y = prepare_data(KEYPOINTS_CSV_FILE)
-    print(X)
-    print(y)
     print("Shape of X:", X.shape)  # Should be (n_samples, 17, 2)
     print("Number of unique strokes:", len(np.unique(y)))
     print("Unique strokes:", np.unique(y))
@@ -239,7 +242,7 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
     
-    model, scaler, label_encoder = train_cnn(X, y, num_classes=len(np.unique(y)), device=device)
+    model, scaler, label_encoder, test_accuracy = train_cnn(X, y, num_classes=len(np.unique(y)), device=device)
     
     # Example of how to use the classifier for a single frame
     print("\nExample prediction:")

@@ -174,12 +174,12 @@ class SwimAnalyzer:
         # 3. Pose estimation
         self.pose_estimation(frame, detections, idx)
             
-    def process_video(self, start = 0, stop = 64, step = 1):
+    def process_video(self, start, stop, step):
         """ Process video by frame, segmenting and estimating pose for every frame.
 
         Args:
             start (int, optional): start frame index. Defaults to 0.
-            stop (int, optional): stop frame index. Defaults to 64.
+            stop (int, optional): stop frame index. Defaults to None.
             step (int, optional): step size. Defaults to 1.
         """
         input_path = f'{SWIM_VIDEO_FOLDER}{self.stroke}-training.mp4'
@@ -189,7 +189,7 @@ class SwimAnalyzer:
         idx = 0
         while cap.isOpened():
             ret, frame = cap.read()
-            if not ret or (idx >= stop):
+            if not ret or (stop and idx >= stop):
                 break
             
             print(f"idx: {idx}")
@@ -202,7 +202,7 @@ class SwimAnalyzer:
         # Release resources
         cap.release()
 
-def main(start, stop, step, stroke):
+def main(stroke, start, stop, step):
     """ SWIM ANALYSIS MAIN FUNCTION """
     
     # Initialize analyzer
@@ -231,12 +231,14 @@ if __name__ == "__main__":
     SAM_TYPE_LARGE = 'vit_h'
 
     # Pose Estimation variables
-    POSE_ESTIMATION_MODEL_PATH = 'models/yolo11n-pose.pt'
+    POSE_ESTIMATION_MODEL_PATH = 'models/yolo11x-pose.pt'
 
     # Device variables
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Run Swim Analysis main function
-    start, stop, step = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
-    stroke = sys.argv[4]
-    main(start, stop, step, stroke)
+    start, stop, step = 0, None, 1
+    if len(sys.argv) > 2:
+        start, stop, step = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+    stroke = sys.argv[1]
+    main(stroke, start, stop, step)

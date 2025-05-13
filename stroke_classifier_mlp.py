@@ -8,9 +8,8 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import classification_report, accuracy_score
 import joblib
 import warnings
-
-# Filter out the specific warning
-warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.metrics._classification')
+# Filter out all warnings
+warnings.filterwarnings('ignore')
 
 class KeypointDataset(Dataset):
     def __init__(self, X, y, augment=False):
@@ -48,21 +47,55 @@ class StrokeMLP(nn.Module):
         
         # MLP layers
         self.mlp = nn.Sequential(
+            # First fully connected layer
             nn.Linear(34, 128),  # 17 keypoints * 2 coordinates = 34 input features
             nn.ReLU(),
             nn.BatchNorm1d(128),
             nn.Dropout(0.3),
             
+            # Second fully connected layer
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.3),
+
+            # Third fully connected layer
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.3),
+
+            # Fourth fully connected layer
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.3),
+
+            # Fifth fully connected layer
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.3),
+
+            # Sixth fully connected layer
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.BatchNorm1d(128),
+            nn.Dropout(0.3),
+
+            # Seventh fully connected layer
             nn.Linear(128, 64),
             nn.ReLU(),
             nn.BatchNorm1d(64),
             nn.Dropout(0.3),
-            
+
+            # Eighth fully connected layer
             nn.Linear(64, 32),
             nn.ReLU(),
             nn.BatchNorm1d(32),
             nn.Dropout(0.3),
             
+            # Ninth fully connected layer
             nn.Linear(32, num_classes)
         )
     
@@ -91,7 +124,8 @@ def prepare_data(csv_path):
         coords = group[['x', 'y']].values
         
         # Only include frames where we have all keypoints (no zeros)
-        if not np.any(coords == 0):
+        # and ensure the shape is exactly (17, 2)
+        if coords.shape == (17, 2):
             X.append(coords)
             y.append(stroke)
     
@@ -127,7 +161,7 @@ def train_mlp(X, y, num_classes, device='cuda' if torch.cuda.is_available() else
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
     # Training loop
-    num_epochs = 50
+    num_epochs = 500
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
@@ -202,6 +236,37 @@ def predict_stroke_mlp(frame_keypoints, model, scaler, label_encoder, device='cu
     
     return prediction, probabilities
 
+def print_model_architecture(model, input_shape=(1, 17, 2)):
+    """Print the model architecture in a readable format."""
+    print("\nModel Architecture:")
+    print("=" * 50)
+    
+    # Create a dummy input tensor
+    dummy_input = torch.randn(input_shape)
+    
+    # Print model summary
+    print(f"Input shape: {input_shape}")
+    print("\nLayer Structure:")
+    print("-" * 50)
+    
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    total_params = count_parameters(model)
+    print(f"Total trainable parameters: {total_params:,}")
+    print("-" * 50)
+    
+    # Print each layer's information
+    for name, module in model.named_children():
+        if isinstance(module, nn.Sequential):
+            print(f"\n{name}:")
+            for sub_name, sub_module in module.named_children():
+                print(f"  {sub_name}: {sub_module}")
+        else:
+            print(f"\n{name}: {module}")
+    
+    print("=" * 50)
+
 def main():
     KEYPOINTS_CSV_FILE = 'data/keypoints/keypoints.csv'
 
@@ -215,10 +280,14 @@ def main():
         print("\nWarning: Very small dataset detected. Consider collecting more data.")
         print("The model might not perform well with such limited data.")
     
-    # Train the MLP classifier
+    # Initialize and print model architecture
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
     
+    model = StrokeMLP(num_classes=len(np.unique(y))).to(device)
+    print_model_architecture(model)
+    
+    # Train the MLP classifier
     model, scaler, label_encoder, test_accuracy = train_mlp(X, y, num_classes=len(np.unique(y)), device=device)
     
     # Example of how to use the classifier for a single frame

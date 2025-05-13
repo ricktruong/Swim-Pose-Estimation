@@ -8,9 +8,9 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import classification_report, accuracy_score
 import joblib
 import warnings
+# Filter out all warnings
+warnings.filterwarnings('ignore')
 
-# Filter out the specific warning
-warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.metrics._classification')
 
 class KeypointDataset(Dataset):
     def __init__(self, X, y, augment=False):
@@ -43,7 +43,6 @@ class StrokeCNN(nn.Module):
         super(StrokeCNN, self).__init__()
         # Input shape: (batch_size, 17, 2)
         
-        # TODO: Remove conv layers
         # First conv layer: 1D conv along the keypoints dimension
         self.conv1 = nn.Sequential(
             nn.Conv1d(2, 32, kernel_size=3, padding=1),
@@ -64,15 +63,56 @@ class StrokeCNN(nn.Module):
             nn.ReLU(),
             nn.BatchNorm1d(128)
         )
+
+        # Fourth conv layer
+        self.conv4 = nn.Sequential(
+            nn.Conv1d(128, 256, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm1d(256)
+        )
+
+        # Fifth conv layer
+        self.conv5 = nn.Sequential(
+            nn.Conv1d(256, 512, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm1d(512)
+        )
+
+        # Sixth conv layer
+        self.conv6 = nn.Sequential(
+            nn.Conv1d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm1d(512)
+        )
+
+        # Seventh conv layer
+        self.conv7 = nn.Sequential(
+            nn.Conv1d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm1d(512)
+        )
         
         # Global average pooling
         self.global_pool = nn.AdaptiveAvgPool1d(1)
         
         # Fully connected layers
         self.fc = nn.Sequential(
+            # First fully connected layer
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            # Second fully connected layer
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            # Third fully connected layer
             nn.Linear(128, 64),
             nn.ReLU(),
             nn.Dropout(0.5),
+
+            # Fourth fully connected layer
             nn.Linear(64, num_classes)
         )
     
@@ -85,7 +125,11 @@ class StrokeCNN(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        
+        x = self.conv4(x)
+        x = self.conv5(x)
+        x = self.conv6(x)
+        x = self.conv7(x)
+
         # Global average pooling
         x = self.global_pool(x)
         x = x.view(x.size(0), -1)
@@ -114,7 +158,7 @@ def prepare_data(csv_path):
         coords = group[['x', 'y']].values
         
         # Only include frames where we have all keypoints (no zeros)
-        if not np.any(coords == 0):
+        if coords.shape == (17, 2):
             X.append(coords)
             y.append(stroke)
     
@@ -150,7 +194,7 @@ def train_cnn(X, y, num_classes, device='cuda' if torch.cuda.is_available() else
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
     # Training loop
-    num_epochs = 50
+    num_epochs = 500
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
@@ -225,6 +269,37 @@ def predict_stroke_cnn(frame_keypoints, model, scaler, label_encoder, device='cu
     
     return prediction, probabilities
 
+def print_model_architecture(model, input_shape=(1, 17, 2)):
+    """Print the model architecture in a readable format."""
+    print("\nModel Architecture:")
+    print("=" * 50)
+    
+    # Create a dummy input tensor
+    dummy_input = torch.randn(input_shape)
+    
+    # Print model summary
+    print(f"Input shape: {input_shape}")
+    print("\nLayer Structure:")
+    print("-" * 50)
+    
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    total_params = count_parameters(model)
+    print(f"Total trainable parameters: {total_params:,}")
+    print("-" * 50)
+    
+    # Print each layer's information
+    for name, module in model.named_children():
+        if isinstance(module, nn.Sequential):
+            print(f"\n{name}:")
+            for sub_name, sub_module in module.named_children():
+                print(f"  {sub_name}: {sub_module}")
+        else:
+            print(f"\n{name}: {module}")
+    
+    print("=" * 50)
+
 def main():
     KEYPOINTS_CSV_FILE = 'data/keypoints/keypoints.csv'
 
@@ -238,10 +313,14 @@ def main():
         print("\nWarning: Very small dataset detected. Consider collecting more data.")
         print("The model might not perform well with such limited data.")
     
-    # Train the CNN classifier
+    # Initialize and print model architecture
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
     
+    model = StrokeCNN(num_classes=len(np.unique(y))).to(device)
+    print_model_architecture(model)
+    
+    # Train the CNN classifier
     model, scaler, label_encoder, test_accuracy = train_cnn(X, y, num_classes=len(np.unique(y)), device=device)
     
     # Example of how to use the classifier for a single frame

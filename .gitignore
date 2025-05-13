@@ -1,4 +1,7 @@
-data/
 models/
 runs/
 venv/
+# Ignore everything in data/
+data/*
+# But don't ignore this specific file
+!data/keypoints/keypoints.csv

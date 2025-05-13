@@ -14,3 +14,4 @@ kornia==0.8.0
 segment-anything==1.0
 supervision==0.25.1
 pyarrow==20.0.0
+transformers==4.40.1

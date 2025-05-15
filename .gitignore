@@ -2,9 +2,10 @@ models/
 runs/
 venv/
 
+data/swim_videos
 data/segmented
 data/keypoints/back
 data/keypoints/breast
 data/keypoints/fly
 data/keypoints/freestyle
-data/swim_videos
+data/results

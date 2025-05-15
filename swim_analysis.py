@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import cv2
 import torch
 import numpy as np
@@ -237,8 +238,15 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Run Swim Analysis main function
-    start, stop, step = 0, None, 1
-    if len(sys.argv) > 2:
-        start, stop, step = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
-    stroke = sys.argv[1]
-    main(stroke, start, stop, step)
+    parser = argparse.ArgumentParser(
+                    prog='Swim Analysis Pipeline',
+                    description='Performs video preprocessing, image segmentation, and keypoint generation.')
+    
+    parser.add_argument('--start', help='Start frame index', type=int, default=0)
+    parser.add_argument('--stop', help='Stop frame index', type=int, default=None)
+    parser.add_argument('--step', help='Step size', type=int, default=1)
+    args = parser.parse_args()
+
+    # stroke = sys.argv[1]
+    for stroke in ['back', 'breast', 'butterfly', 'freestyle']:
+        main(stroke, args.start, args.stop, args.step)

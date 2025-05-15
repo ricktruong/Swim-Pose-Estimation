@@ -17,4 +17,16 @@ Install project dependencies.
 pip install -r requirements.txt
 ```
 
-You can now begin execution of python code in segmentation_pose_estimation.ipynb.
+## Preprocessing, Image Segmentation, & Keypoint Generation
+```bash
+python swim_analysis.py [stroke] [start] [stop] [step]
+```
+- stroke: 
+## Project Overview
+
+Here is an overview of how to run the swim analysis pipeline:
+
+![Swim Analysis Pipeline CLI](data/results/swim_analysis_cli.png)
+
+Run swim_analysis.py to perform video preprocessing, frame-by-frame transformation, image segmentation, and keypoint generation.
+

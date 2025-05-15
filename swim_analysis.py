@@ -220,7 +220,7 @@ def main(stroke, start, stop, step):
 if __name__ == "__main__":
     # Image dataset folder paths
     PROCESSED_IMAGES_FOLDER = 'data/processed/'
-    SWIM_VIDEO_FOLDER = 'data/Swim Videos/'
+    SWIM_VIDEO_FOLDER = 'data/swim_videos/'
     INPUT_IMAGES_FOLDER = 'data/input/'
     SEGMENTED_IMAGES_FOLDER = 'data/segmented/'
     KEYPOINTS_FOLDER = 'data/keypoints/'

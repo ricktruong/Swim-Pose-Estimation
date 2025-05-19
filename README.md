@@ -1,4 +1,11 @@
-# EE267 Spring 2025 Term Project: Swimmer Segmentation and Pose Estimation
+# Swim Pose Estimation
+Traditionally, swim pose estimation was a challenging task, requiring identification of the swimmer of interest, triangulation of the swimmer, identification of orientation of the swimmer, and intricate analysis of the swimmers joint positions.
+
+From breakthroughs in image processing techniques and computer vision, swim pose estimation now seems within reach. Via the Swim Analysis pipeline, the 4 components of which are listed below, we aim to classify the stroke of a swimmer of interest from individual frames in swimming videos:
+1. Preprocessing Pipeline: Create a video processing pipeline to process and transform images frame-by-frame
+2. Image Segmentation: Segment the swimmer from the background using Meta’s Segment Anything Model (SAM)
+3. Keypoint Generation: Detect and label the swimmer’s joints using a human pose estimation model of your choice (either YOLO or Meta Sapiens)
+4. Pose Estimation: Classify the pose of the swimmer
 
 ## Setup
 
